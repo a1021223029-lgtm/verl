@@ -21,7 +21,12 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 from verl.plugin.platform import get_platform
-from verl.trainer.constants_ppo import available_physical_cores, get_ppo_ray_runtime_env
+from verl.trainer.constants_ppo import (
+    available_physical_cores,
+    batch_invariant_requested,
+    export_batch_invariant_env,
+    get_ppo_ray_runtime_env,
+)
 from verl.trainer.ppo.utils import need_critic, need_reference_policy
 from verl.utils.config import validate_config
 from verl.utils.device import auto_set_device, is_cuda_available
@@ -50,6 +55,8 @@ def run_ppo(config, task_runner_class) -> None:
         os.environ["VERL_FULL_DETERMINISM"] = "1"
         os.environ["VLLM_BATCH_INVARIANT"] = "1"
         os.environ["PYTHONHASHSEED"] = str(rollout_cfg.seed)
+    if batch_invariant_requested(config):
+        export_batch_invariant_env()
 
     trainer_logger = config.trainer.get("logger", [])
     if "rl_insight" in ([trainer_logger] if isinstance(trainer_logger, str) else trainer_logger or []):
@@ -165,11 +172,15 @@ class TaskRunnerV1:
             succeeded = True
         finally:
             try:
-                tracking = getattr(self.trainer, "logger", None)
-                if tracking is not None:
-                    tracking.finish(exit_code=0 if succeeded else 1)
+                if self.trainer is not None:
+                    self.trainer.close_dataloaders()
             finally:
-                tq.close()
+                try:
+                    tracking = getattr(self.trainer, "logger", None)
+                    if tracking is not None:
+                        tracking.finish(exit_code=0 if succeeded else 1)
+                finally:
+                    tq.close()
 
 
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
