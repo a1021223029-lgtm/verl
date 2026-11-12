@@ -39,7 +39,7 @@ RUN pip install --no-cache-dir setuptools_scm && \
       cherry-pick ${VLLM_PR_51369} && \
     pip install --no-cache-dir -r requirements/rocm.txt && \
     MAX_JOBS=64 python3 setup.py develop --no-deps
-RUN pip install tilelang -y
+RUN pip install --no-cache-dir tilelang==0.1.15
 
 
 FROM install_vllm AS install_verl
