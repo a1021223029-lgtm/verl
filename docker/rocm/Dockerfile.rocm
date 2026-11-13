@@ -28,18 +28,18 @@ RUN cd /workspace \
     && rm -fr causal-conv1d
 
 ARG VLLM_TAG="b22afe45ac797ae58e67a7a3ad79ee5714024420"
-# [ROCm] Grant host access to VMM allocations in sleep-mode pool (not yet merged)
-# Ref: https://github.com/vllm-project/vllm/pull/51369
-ARG VLLM_PR_51369="0fdfc4ad8c4bb5656f7c41bb28b21ae7330fa139"
+# [ROCm][Bugfix] Map sleep-mode cuMem memory for the host
+# Ref: https://github.com/vllm-project/vllm/pull/60367
+# Merged upstream after VLLM_TAG (first released in v0.32.0); drop this once VLLM_TAG includes it.
+# Only the csrc change is applied: the PR's test edit targets a file that doesn't exist at VLLM_TAG.
+ARG VLLM_PR_60367="5dd4a628dde34d5b5737067f131a2499f672f684"
 RUN pip install --no-cache-dir setuptools_scm && \
     cd /workspace && git clone https://github.com/vllm-project/vllm && \
     cd vllm && git checkout ${VLLM_TAG} && \
-    git fetch origin pull/51369/head && \
-    git -c user.email=build@localhost -c user.name=docker-build \
-      cherry-pick ${VLLM_PR_51369} && \
+    git show --format= ${VLLM_PR_60367} -- csrc/cumem_allocator.cpp | git apply --verbose && \
     pip install --no-cache-dir -r requirements/rocm.txt && \
     MAX_JOBS=64 python3 setup.py develop --no-deps
-RUN pip install --no-cache-dir tilelang==0.1.15
+    pip install --no-cache-dir tilelang==0.1.15
 
 
 FROM install_vllm AS install_verl
