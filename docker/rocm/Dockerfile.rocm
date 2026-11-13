@@ -27,23 +27,21 @@ RUN cd /workspace \
     && cd .. \
     && rm -fr causal-conv1d
 
-ARG VLLM_TAG="b22afe45ac797ae58e67a7a3ad79ee5714024420"
-# [ROCm] Grant host access to VMM allocations in sleep-mode pool (not yet merged)
-# Ref: https://github.com/vllm-project/vllm/pull/51369
-ARG VLLM_PR_51369="0fdfc4ad8c4bb5656f7c41bb28b21ae7330fa139"
+
+ARG VLLM_TAG="5df63a7203cdb9328d824a27b682e77c7b9928be"
+#upgrade VLLM version to 0.32
 RUN pip install --no-cache-dir setuptools_scm && \
     cd /workspace && git clone https://github.com/vllm-project/vllm && \
     cd vllm && git checkout ${VLLM_TAG} && \
-    git fetch origin pull/51369/head && \
-    git -c user.email=build@localhost -c user.name=docker-build \
-      cherry-pick ${VLLM_PR_51369} && \
     pip install --no-cache-dir -r requirements/rocm.txt && \
     MAX_JOBS=64 python3 setup.py develop --no-deps
-RUN pip install --no-cache-dir tilelang==0.1.15
+    pip install --no-cache-dir tilelang==0.1.15
+
 
 
 FROM install_vllm AS install_verl
-ARG VERL_TAG="98be7e979fc8869e64160455fbd6b8db53267c5e"
+# verl #8390: upgrade vllm==0.32.0 and transformers==5.16.1
+ARG VERL_TAG="f78fd053e13c3d021e51de5e81afc54dddd13993"
 RUN cd /workspace && git clone https://github.com/verl-project/verl.git && \
     cd verl && git checkout ${VERL_TAG} && \
     git submodule update --init --recursive && \
